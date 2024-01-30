@@ -1,0 +1,41 @@
+apiVersion: ai.sap.com/v1alpha1
+kind: ServingTemplate
+metadata:
+  name: arron-error-classification # executable id, must be unique across all your workflows (YAML files), please modify this to any value (e.g. code-pipeline-12345) if you are not the only user of your SAP AI Core instance.
+  annotations:
+    scenarios.ai.sap.com/description: "error classification"
+    scenarios.ai.sap.com/name: "Arron error classification poc"
+    executables.ai.sap.com/description: "error classification"
+    executables.ai.sap.com/name: "arron-error-classification"
+  labels:
+    scenarios.ai.sap.com/id: "arron-error-classification"
+    ai.sap.com/version: "1.0"
+    ext.ai.sap.com/islm_released_version: "true"
+    ext.ai.sap.com/islm_executable_type: "inference"
+    ext.ai.sap.com/islm_inference_type: "online"
+spec:
+ imagePullSecrets: # (optional if using a private docker hub repository)
+  - name: arron-llm # your docker registry secret
+ template:
+   apiVersion: "serving.kserve.io/v1beta1"
+   metadata:
+     annotations: |
+       autoscaling.knative.dev/metric: concurrency   # condition when to scale
+       autoscaling.knative.dev/target: 1
+       autoscaling.knative.dev/targetBurstCapacity: 0
+     labels: |
+       ai.sap.com/resourcePlan: starter # computing power
+   spec: |
+     predictor:
+       minReplicas: 1
+       maxReplicas: 1    # how much to scale
+       containers:
+       - name: kserve-container
+         image: docker.io/arronsuo/llm:1.0.0
+         ports:
+           - containerPort: 9001    # customizable port
+             protocol: TCP
+         command: ["/bin/sh", "-c"]
+         args:
+           - >
+             set -e && echo "Starting" && gunicorn --chdir /app/src main:app -b 0.0.0.0:9001 # filename `main` flask variable `app`
